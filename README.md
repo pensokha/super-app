@@ -18,3 +18,14 @@ The Bridge (The "Nervous System"): This is the most critical piece of technology
 - Super App: the shell app for hosting mini app
 - Super App backend: backend of super app
 - hello world miniapp: sample mini application
+
+
+# how to package miniapp
+    # cd super_app_miniapp
+    # npm run build
+    # cd build
+    # zip -r ../hello_world_v1.1.4.zip .
+# how to deploy miniapp to vercel
+cd ../hello_world_miniapp
+vercel --prod
+

@@ -18,7 +18,7 @@ const miniAppRegistry = [
     type: 'local', // 'local' for zipped package, 'remote' for a URL
     appName: 'hello_world',
     displayName: 'Hello World App (Local)',
-    version: '1.1.3',
+    version: '1.1.5',
     iconUrl: 'https://cdn-icons-png.flaticon.com/512/733/733581.png', // A local/zip icon
     // The packageUrl is now constructed dynamically to avoid version mismatch errors.
     get packageUrl() { return `http://localhost:${port}/packages/${this.appName}_v${this.version}.zip`; }
@@ -27,7 +27,7 @@ const miniAppRegistry = [
     type: 'remote',
     appName: 'react_docs',
     displayName: 'React Docs (Remote)',
-    version: '1.0.0',
+    version: '1.1.5',
     iconUrl: 'https://cdn-icons-png.flaticon.com/512/875/875209.png', // A remote/link icon
     remoteUrl: 'https://hello-world-miniapp-pi.vercel.app' // The direct URL to load in the WebView
   }

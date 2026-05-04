@@ -49,6 +49,29 @@ class SuperAppSDK {
        */
       getBatteryLevel: () => this._request('device.getBatteryLevel'),
     };
+
+    this.auth = {
+      /**
+       * Initiates a login process with the Super App.
+       * @returns {Promise<{token: string}>} A promise that resolves with an authentication token.
+       */
+      login: () => this._request('auth.login'),
+      /**
+       * Logs out the user from the Super App.
+       * @returns {Promise<boolean>} A promise that resolves to true on successful logout.
+       */
+      logout: () => this._request('auth.logout'),
+      /**
+       * Retrieves the current authentication token from the Super App.
+       * @returns {Promise<string>} A promise that resolves with the authentication token.
+       */
+      getToken: () => this._request('auth.getToken'),
+    };
+
+    this.payment = {
+      initiate: (amount, currency) =>
+        this._request('payment.initiatePayment', { amount, currency }),
+    };
   }
 
   /**

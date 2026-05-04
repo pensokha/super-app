@@ -1,0 +1,6 @@
+node_modules
+dist
+build
+package-lock.json
+react-starter/node_modules
+.DS_Store

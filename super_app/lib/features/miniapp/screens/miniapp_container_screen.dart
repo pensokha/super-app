@@ -17,6 +17,7 @@ class _MiniAppContainerScreenState extends State<MiniAppContainerScreen> {
   late final WebViewController _controller;
   int _loadingPercentage = 0;
   bool _isPageFinished = false; // Add a flag to track if the page is ready.
+  bool _isLoggedIn = false; // Mock authentication state
 
   @override
   void initState() {
@@ -113,14 +114,24 @@ Page resource error:
       return;
     }
 
+    Map<String, dynamic> message;
+    String? method;
+    int? id;
+
     try {
-      final message = jsonDecode(jsonString);
-      final String method = message['method'];
-      final int id = message['id'];
+      message = jsonDecode(jsonString);
+      method = message['method'];
+      id = message['id'];
+
+      if (method == null || id == null) {
+        debugPrint('Invalid message format: method or id missing. Message: $jsonString');
+        return; // Cannot send error response as id is missing
+      }
 
       debugPrint('Received method: $method with id: $id');
 
       switch (method) {
+        // --- User Service ---
         case 'user.getUserInfo':
           // Simulate fetching user data from a service
           final user = {
@@ -143,6 +154,70 @@ Page resource error:
             debugPrint(
                 'An unexpected error occurred while getting battery level: $e');
             await _sendErrorResponse(id, -32603, 'Internal server error');
+          }
+          break;
+
+        // --- Auth Service ---
+        case 'auth.login':
+          // Simulate a login process
+          // In a real app, this would involve calling an actual auth service
+          _isLoggedIn = true;
+          await _sendSuccessResponse(id, {'token': 'mock_jwt_token_12345'});
+          break;
+        case 'auth.logout':
+          // Simulate a logout process
+          _isLoggedIn = false;
+          await _sendSuccessResponse(id, true);
+          break;
+        case 'auth.getToken':
+          if (_isLoggedIn) {
+            await _sendSuccessResponse(id, 'mock_jwt_token_12345');
+          } else {
+            await _sendErrorResponse(id, 401, 'User not logged in');
+          }
+          break;
+
+        // --- Payment Service ---
+        case 'payment.initiatePayment':
+          if (!_isLoggedIn) {
+            await _sendErrorResponse(id, 401, 'Login required to initiate payment');
+            break;
+          }
+
+          // Safely parse amount, handling both int and double from JSON
+          final dynamic rawAmount = message['params']['amount'];
+          final double? amount = rawAmount is num ? rawAmount.toDouble() : null;
+          final String? currency = message['params']['currency'];
+
+          if (amount == null || currency == null) {
+            await _sendErrorResponse(id, -32602, 'Invalid params: amount and currency are required');
+            break;
+          }
+
+          if (amount <= 0) {
+            await _sendErrorResponse(id, -32001, 'Payment amount must be positive');
+            break;
+          }
+
+          // Simulate payment processing
+          // In a real app, this would integrate with a payment gateway
+          debugPrint('Simulating payment for $currency $amount');
+          // Simulate a delay for payment processing
+          await Future.delayed(const Duration(seconds: 2));
+
+          // Randomly succeed or fail for demonstration
+          if (amount > 1000) { // Example: payments over 1000 always fail
+             await _sendErrorResponse(id, -32002, 'Payment failed: Amount too high for simulation');
+          } else if (amount == 13.37) { // Example: specific amount fails
+             await _sendErrorResponse(id, -32003, 'Payment failed: Transaction declined');
+          }
+          else {
+            await _sendSuccessResponse(id, {
+              'transactionId': 'txn_${DateTime.now().millisecondsSinceEpoch}',
+              'status': 'completed',
+              'amount': amount,
+              'currency': currency,
+            });
           }
           break;
         default:
