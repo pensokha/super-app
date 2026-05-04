@@ -29,3 +29,21 @@ The Bridge (The "Nervous System"): This is the most critical piece of technology
 cd ../hello_world_miniapp
 vercel --prod
 
+
+# link local lib
+cd ../super_app_sdk
+npm link
+cd ../hello_world_miniapp
+npm link @super-app/sdk
+
+
+# create sample mini app 
+# link cli project
+cd /Users/sokhapen/Documents/SuperApp/super-app-cli
+chmod +x bin/index.js
+npm link
+
+
+# create sample code using cli command
+cd /Users/sokhapen/Documents/SuperApp
+super-app-cli create my-new-miniapp

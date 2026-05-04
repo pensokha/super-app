@@ -1,13 +1,18 @@
 #!/usr/bin/env node
 
-const { Command } = require('commander');
-const chalk = require('chalk');
-const fs = require('fs-extra');
-const path = require('path');
-const { execSync, spawn } = require('child_process');
-const ora = require('ora');
+import { Command } from 'commander';
+import chalk from 'chalk';
+import fs from 'fs-extra';
+import path from 'path';
+import { execSync, spawn } from 'child_process';
+import ora from 'ora';
+import { fileURLToPath } from 'url';
 
 const program = new Command();
+
+// In ES Modules, __dirname is not directly available.
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // --- Helper Functions ---
 
@@ -74,26 +79,26 @@ program
     const templatePath = path.join(__dirname, '..', 'templates', options.template);
     const appPath = path.join(process.cwd(), appName);
 
-    console.log(chalk.blue(`\nCreating a new Mini App: ...\n`));
+    console.log(chalk.blue(`\nCreating a new Mini App: ${appName}...\n`));
 
     // 1. Check if template exists
     if (!fs.existsSync(templatePath)) {
-      console.error(chalk.red(`Error: Template '${options.template}' not found at `));
+      console.error(chalk.red(`Error: Template '${options.template}' not found at ${templatePath}`));
       process.exit(1);
     }
 
     // 2. Check if app directory already exists
     if (fs.existsSync(appPath)) {
-      console.error(chalk.red(`Error: Directory '' already exists. Please choose a different name or delete the existing directory.`));
+      console.error(chalk.red(`Error: Directory '${appName}' already exists. Please choose a different name or delete the existing directory.`));
       process.exit(1);
     }
 
     // 3. Copy template
     runCommand(
-      `cp -R  `,
+      `cp -R ${templatePath} ${appPath}`,
       process.cwd(),
-      `Copied template '${options.template}' to ''`,
-      `Failed to copy template for ''`
+      `Copied template '${options.template}' to '${appName}'`,
+      `Failed to copy template for '${appName}'`
     );
 
     // 4. Update package.json
@@ -104,22 +109,21 @@ program
     packageJson.private = true;
     packageJson.homepage = '.'; // Ensure relative paths for local loading
     fs.writeJsonSync(packageJsonPath, packageJson, { spaces: 2 });
-    console.log(chalk.green(`Updated package.json for ''`));
+    console.log(chalk.green(`Updated package.json for '${appName}'`));
 
     // 5. Install dependencies
-    console.log(chalk.blue(`\nInstalling dependencies for ''... This might take a moment.`));
+    console.log(chalk.blue(`\nInstalling dependencies for '${appName}'... This might take a moment.`));
     await runInteractiveCommand(
       'npm', ['install'], appPath
     ).then(() => {
-      console.log(chalk.green(`Dependencies installed successfully for ''`));
+      console.log(chalk.green(`Dependencies installed successfully for '${appName}'`));
     }).catch((error) => {
-      console.error(chalk.red(`Failed to install dependencies for '': ${error.message}`));
+      console.error(chalk.red(`Failed to install dependencies for '${appName}': ${error.message}`));
       process.exit(1);
     });
 
-    console.log(chalk.green(`\nMini App '' created successfully!`));
-    console.log(chalk.yellow(`\nNext steps:`));
-    console.log(chalk.yellow(`  cd `));
+    console.log(chalk.green(`\nMini App '${appName}' created successfully!`));
+    console.log(chalk.yellow(`\nNext steps:\n  cd ${appName}`));
     console.log(chalk.yellow(`  super-app-cli serve`));
   });
 
@@ -129,7 +133,7 @@ program
   .description('Start the development server for the current Mini App')
   .action(async () => {
     const appPath = process.cwd();
-    console.log(chalk.blue(`\nStarting development server for Mini App in ''...`));
+    console.log(chalk.blue(`\nStarting development server for Mini App in '${appPath}'...`));
     try {
       await runInteractiveCommand('npm', ['start'], appPath);
     } catch (error) {
@@ -149,34 +153,34 @@ program
     const packageJsonPath = path.join(appPath, 'package.json');
 
     if (!fs.existsSync(packageJsonPath)) {
-      console.error(chalk.red(`Error: No package.json found in ''. Are you in a Mini App directory?`));
+      console.error(chalk.red(`Error: No package.json found in '${appPath}'. Are you in a Mini App directory?`));
       process.exit(1);
     }
 
     const packageJson = fs.readJsonSync(packageJsonPath);
     const appVersion = packageJson.version || '0.0.1';
-    const outputZipName = options.output || `_v.zip`;
+    const outputZipName = options.output || `${appName}_v${appVersion}.zip`;
     const buildDir = path.join(appPath, 'build');
     const outputZipPath = path.join(appPath, outputZipName);
 
-    console.log(chalk.blue(`\nBuilding Mini App '' (version )...`));
+    console.log(chalk.blue(`\nBuilding Mini App '${appName}' (version ${appVersion})...`));
 
     // 1. Run npm build
     await runInteractiveCommand(
       'npm', ['run', 'build'], appPath
     ).then(() => {
-      console.log(chalk.green(`Mini App '' built successfully.`));
+      console.log(chalk.green(`Mini App '${appName}' built successfully.`));
     }).catch((error) => {
-      console.error(chalk.red(`Failed to build Mini App '': ${error.message}`));
+      console.error(chalk.red(`Failed to build Mini App '${appName}': ${error.message}`));
       process.exit(1);
     });
 
     // 2. Create zip archive
-    console.log(chalk.blue(`\nCreating zip archive: ...`));
+    console.log(chalk.blue(`\nCreating zip archive: ${outputZipName}...`));
     try {
       // Ensure the build directory exists
       if (!fs.existsSync(buildDir)) {
-        throw new Error(`Build directory not found: `);
+        throw new Error(`Build directory not found: ${buildDir}`);
       }
 
       // Remove existing zip if it exists
@@ -185,15 +189,15 @@ program
       }
 
       // Zip the contents of the build directory
-      execSync(`cd  && zip -r  .`, { stdio: 'pipe' });
-      console.log(chalk.green(`Zip archive created at: `));
+      execSync(`cd ${buildDir} && zip -r ${outputZipPath} .`, { stdio: 'pipe', cwd: appPath }); // Ensure cwd is correct for zip
+      console.log(chalk.green(`Zip archive created at: ${outputZipPath}`));
     } catch (error) {
       console.error(chalk.red(`Failed to create zip archive: ${error.message}`));
       process.exit(1);
     }
 
-    console.log(chalk.green(`\nMini App '' packaged successfully!`));
-    console.log(chalk.yellow(`\nTo deploy, upload '' to your Super App backend.`));
+    console.log(chalk.green(`\nMini App '${appName}' packaged successfully!`));
+    console.log(chalk.yellow(`\nTo deploy, upload '${outputZipName}' to your Super App backend.`));
   });
 
 program.parse(process.argv);
