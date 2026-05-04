@@ -14,4 +14,7 @@ The Mini Apps (The "Guests"): These are essentially single-page applications (SP
 
 The Bridge (The "Nervous System"): This is the most critical piece of technology. It's a communication layer that allows the JavaScript code in the Mini App (running in a WebView) to talk to the Dart/Native code in the Flutter Super App, and vice-versa.
 
-KEY Features
+# Project structure
+- Super App: the shell app for hosting mini app
+- Super App backend: backend of super app
+- hello world miniapp: sample mini application

@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:battery_plus/battery_plus.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
@@ -127,48 +128,62 @@ Page resource error:
             'id': '12345',
             'email': 'sokhapen@superapp.com',
           };
-
-          // Create a success response payload
-          final responsePayload = {
-            'jsonrpc': '2.0',
-            'result': user,
-            'id': id,
-          };
-
-          // Encode the response to a JSON string, then to Base64 to safely pass it to JavaScript.
-          final responseString = jsonEncode(responsePayload);
-          final base64Response = base64Encode(utf8.encode(responseString));
-          final script = "window.handleSuperAppResponseFromBase64('$base64Response')";
-          try {
-            await _controller.runJavaScript(script);
-          } catch (e) {
-            debugPrint('Error sending response to JS: $e');
-          }
+          await _sendSuccessResponse(id, user);
           break;
         case 'device.getBatteryLevel':
-          final battery = Battery();
-          final batteryLevel = await battery.batteryLevel;
-
-          final responsePayload = {
-            'jsonrpc': '2.0',
-            'result': batteryLevel,
-            'id': id,
-          };
-
-          final responseString = jsonEncode(responsePayload);
-          final base64Response = base64Encode(utf8.encode(responseString));
-          final script = "window.handleSuperAppResponseFromBase64('$base64Response')";
           try {
-            await _controller.runJavaScript(script);
+            final battery = Battery();
+            final batteryLevel = await battery.batteryLevel;
+            await _sendSuccessResponse(id, batteryLevel);
+          } on PlatformException catch (e) {
+            debugPrint('Failed to get battery level: ${e.message}');
+            await _sendErrorResponse(
+                id, -32000, e.message ?? 'Battery info unavailable');
           } catch (e) {
-            debugPrint('Error sending response to JS: $e');
+            debugPrint(
+                'An unexpected error occurred while getting battery level: $e');
+            await _sendErrorResponse(id, -32603, 'Internal server error');
           }
           break;
         default:
           debugPrint('Unknown method received from JS: $method');
+          await _sendErrorResponse(id, -32601, 'Method not found: $method');
       }
     } catch (e) {
       debugPrint('Error parsing JavaScript message: $e');
     }
+  }
+
+  // --- Response Helper Methods ---
+
+  Future<void> _sendResponse(Map<String, dynamic> payload) async {
+    if (!_isPageFinished) {
+      debugPrint('Page not ready, cannot send response.');
+      return;
+    }
+    final responseString = jsonEncode(payload);
+    final base64Response = base64Encode(utf8.encode(responseString));
+    final script = "window.handleSuperAppResponseFromBase64('$base64Response')";
+    try {
+      await _controller.runJavaScript(script);
+    } catch (e) {
+      debugPrint('Error sending response to JS: $e');
+    }
+  }
+
+  Future<void> _sendSuccessResponse(int id, dynamic result) async {
+    await _sendResponse({
+      'jsonrpc': '2.0',
+      'result': result,
+      'id': id,
+    });
+  }
+
+  Future<void> _sendErrorResponse(int id, int code, String message) async {
+    await _sendResponse({
+      'jsonrpc': '2.0',
+      'error': {'code': code, 'message': message},
+      'id': id,
+    });
   }
 }
