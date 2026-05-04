@@ -1,0 +1,23 @@
+{
+  "name": "@super-app/sdk",
+  "version": "1.0.0",
+  "main": "dist/index.cjs.js",
+  "module": "dist/index.esm.js",
+   "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "rollup -c",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "PEN Sokha",
+  "license": "ISC",
+  "description": "SDK for building Super App Mini Apps",
+  "devDependencies": {
+    "@babel/core": "^7.29.0",
+    "@babel/preset-env": "^7.29.3",
+    "@rollup/plugin-babel": "^7.0.0",
+    "rollup": "^4.60.2"
+  }
+}
