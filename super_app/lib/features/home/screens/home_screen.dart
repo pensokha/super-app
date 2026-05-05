@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:super_app/features/miniapp/screens/miniapp_container_screen.dart';
 import 'package:super_app/features/miniapp/services/miniapp_loader_service.dart';
 import 'package:super_app/features/miniapp/models/miniapp_model.dart';
+import 'package:super_app/features/miniapp/models/miniapp_manifest.dart'; // Added missing import
+import 'package:super_app/features/miniapp/models/loaded_miniapp_info.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -35,11 +37,11 @@ class _HomeScreenState extends State<HomeScreen> {
     });
 
     try {
-      final localUrl = await _miniAppLoader.loadMiniApp(appName: appName);
+      final LoadedMiniAppInfo appInfo = await _miniAppLoader.loadMiniApp(appName: appName);
       if (mounted) {
         Navigator.of(context).push(
           MaterialPageRoute(
-            builder: (context) => MiniAppContainerScreen(url: localUrl),
+            builder: (context) => MiniAppContainerScreen(url: appInfo.localUrl, manifest: appInfo.manifest),
           ),
         );
       }
@@ -57,10 +59,13 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  void _launchRemoteMiniApp(String url) {
+  void _launchRemoteMiniApp(String url, String appName) {
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (context) => MiniAppContainerScreen(url: url),
+        builder: (context) => MiniAppContainerScreen(
+          url: url,
+          manifest: MiniAppManifest(name: appName, version: 'remote', permissions: []), // Remote apps have no manifest initially
+        ),
       ),
     );
   }
@@ -118,7 +123,10 @@ class _HomeScreenState extends State<HomeScreen> {
                         if (app.type == 'local') {
                           _launchDynamicMiniApp(app.appName);
                         } else if (app.type == 'remote' && app.remoteUrl != null) {
-                          _launchRemoteMiniApp(app.remoteUrl!);
+                          // For remote apps, we create a dummy manifest for now.
+                          // In a real scenario, you might fetch a manifest from the remote URL
+                          // or have a predefined set of permissions for remote apps.
+                          _launchRemoteMiniApp(app.remoteUrl!, app.appName);
                         } else {
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(

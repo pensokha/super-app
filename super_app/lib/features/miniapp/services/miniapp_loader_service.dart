@@ -6,6 +6,8 @@ import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:archive/archive_io.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:super_app/features/miniapp/models/miniapp_manifest.dart';
+import 'package:super_app/features/miniapp/models/loaded_miniapp_info.dart';
 import 'package:super_app/features/miniapp/models/miniapp_model.dart';
 
 // In a real app, this would be in a config file.
@@ -15,11 +17,11 @@ final String _backendUrl = kIsWeb || !Platform.isAndroid ? 'http://localhost:300
 class MiniAppLoaderService {
   /// Ensures the mini-app is up-to-date and ready to be used.
   ///
-  /// Returns the local path to the mini-app's index.html file.
-  Future<String> loadMiniApp({required String appName}) async {
+  /// Returns a [LoadedMiniAppInfo] object containing the local URL and its manifest.
+  Future<LoadedMiniAppInfo> loadMiniApp({required String appName}) async {
     final appDir = await _getAppDirectory(appName);
     final indexFile = File(p.join(appDir.path, 'index.html'));
-
+    
     try {
       // 1. Fetch the latest metadata from the backend
       final metadata = await _fetchMiniAppMetadata(appName);
@@ -27,7 +29,7 @@ class MiniAppLoaderService {
         // If we can't reach the backend, try to load from cache
         if (await indexFile.exists()) {
           debugPrint('Backend unreachable. Loading "$appName" from cache.');
-          return indexFile.uri.toString();
+          // Fall through to read manifest from local files
         }
         throw Exception('MiniApp not found and backend is unreachable.');
       }
@@ -47,17 +49,40 @@ class MiniAppLoaderService {
       debugPrint('An error occurred during update check: $e. Trying to load from cache.');
       // If any error occurs (network, etc.), fall back to loading from cache if it exists.
       if (await indexFile.exists()) {
-        return indexFile.uri.toString();
+        // Fall through to read manifest from local files
       }
       // If there's no cached version, re-throw the error.
       rethrow;
     }
 
-    // 4. Return the path to the local index.html
+    // 4. Return the LoadedMiniAppInfo object
     if (!await indexFile.exists()) {
       throw Exception('Failed to load MiniApp: index.html not found after process.');
     }
-    return indexFile.uri.toString();
+    // Read and parse the manifest.json
+    final manifestFile = File(p.join(appDir.path, 'manifest.json'));
+    if (!await manifestFile.exists()) {
+      throw Exception('MiniApp manifest.json not found for "$appName".');
+    }
+    final manifestContent = await manifestFile.readAsString();
+    final manifestJson = jsonDecode(manifestContent);
+    final manifest = MiniAppManifest.fromJson(manifestJson);
+
+    // Inject CSP into index.html if provided in manifest
+    if (manifest.csp != null && manifest.csp!.isNotEmpty) {
+      debugPrint('Injecting CSP into ${appName}/index.html');
+      String htmlContent = await indexFile.readAsString();
+      const cspPlaceholder = '<!-- CSP_PLACEHOLDER -->';
+      if (htmlContent.contains(cspPlaceholder)) {
+        final cspMetaTag = '<meta http-equiv="Content-Security-Policy" content="${manifest.csp}">';
+        htmlContent = htmlContent.replaceFirst(cspPlaceholder, cspMetaTag);
+        await indexFile.writeAsString(htmlContent);
+      } else {
+        debugPrint('Warning: CSP_PLACEHOLDER not found in index.html for $appName. CSP not injected.');
+      }
+    }
+
+    return LoadedMiniAppInfo(localUrl: indexFile.uri.toString(), manifest: manifest);
   }
 
   Future<List<MiniApp>> fetchMiniAppList() async {

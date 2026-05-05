@@ -18,7 +18,7 @@ const miniAppRegistry = [
     type: 'local', // 'local' for zipped package, 'remote' for a URL
     appName: 'hello_world',
     displayName: 'Hello World App (Local)',
-    version: '1.1.5',
+    version: '1.1.7',
     iconUrl: 'https://cdn-icons-png.flaticon.com/512/733/733581.png', // A local/zip icon
     // The packageUrl is now constructed dynamically to avoid version mismatch errors.
     get packageUrl() { return `http://localhost:${port}/packages/${this.appName}_v${this.version}.zip`; }

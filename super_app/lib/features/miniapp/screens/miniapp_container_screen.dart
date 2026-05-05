@@ -3,30 +3,46 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:battery_plus/battery_plus.dart';
 import 'package:webview_flutter/webview_flutter.dart';
+import 'package:super_app/features/miniapp/services/webview_pool_service.dart';
+import 'package:super_app/features/miniapp/models/miniapp_manifest.dart';
 
 class MiniAppContainerScreen extends StatefulWidget {
   final String url;
+  final MiniAppManifest manifest;
 
-  const MiniAppContainerScreen({super.key, required this.url});
+  const MiniAppContainerScreen({super.key, required this.url, required this.manifest});
 
   @override
   State<MiniAppContainerScreen> createState() => _MiniAppContainerScreenState();
 }
 
 class _MiniAppContainerScreenState extends State<MiniAppContainerScreen> {
-  late final WebViewController _controller;
+  late WebViewController _controller; // Changed to non-final as it's acquired from pool
   int _loadingPercentage = 0;
   bool _isPageFinished = false; // Add a flag to track if the page is ready.
   bool _isLoggedIn = false; // Mock authentication state
+  bool _isWebViewInitialized = false; // New flag to track WebView initialization
+  late final Set<String> _allowedPermissions;
+  final WebViewPoolService _webViewPoolService = WebViewPoolService();
 
   @override
   void initState() {
     super.initState();
 
-    _controller = WebViewController()
-      ..setJavaScriptMode(JavaScriptMode.unrestricted)
-      ..setBackgroundColor(const Color(0x00000000))
-      ..setNavigationDelegate(
+    _allowedPermissions = widget.manifest.permissions.toSet();
+
+    _initWebView();
+  }
+
+  Future<void> _initWebView() async {
+    _controller = await _webViewPoolService.acquireController();
+    _controller
+      ..setJavaScriptMode(JavaScriptMode.unrestricted) // Set these properties here
+      ..setBackgroundColor(const Color(0x00000000)) // as they are part of the controller setup
+      // and not specific to navigation.
+      // The setNavigationDelegate is also part of the controller setup.
+      // It's better to set these once the controller is acquired.
+      ..setNavigationDelegate( // Set navigation delegate after acquiring
         NavigationDelegate(
           onProgress: (int progress) {
             setState(() {
@@ -64,13 +80,43 @@ Page resource error:
         },
       )
       ..loadRequest(Uri.parse(widget.url));
+
+    // Once the controller is fully set up and has started loading, mark it as initialized.
+    if (mounted) {
+      setState(() => _isWebViewInitialized = true);
+    }
+  }
+
+  @override
+  void dispose() {
+    _webViewPoolService.releaseController(_controller); // Release controller back to pool
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Mini App')),
-      floatingActionButton: FloatingActionButton(
+      body: Stack(
+        children: [
+          // Render WebViewWidget if initialized, otherwise show loading indicator
+          _isWebViewInitialized
+              ? WebViewWidget(controller: _controller)
+              : const Center(child: CircularProgressIndicator()),
+
+          // Show linear progress indicator only if WebView is initialized and loading
+          if (_isWebViewInitialized && _loadingPercentage < 100)
+            LinearProgressIndicator(
+              value: _loadingPercentage / 100.0,
+            ),
+        ],
+      ),
+      floatingActionButton: _isWebViewInitialized ? _buildFloatingActionButton() : null,
+    );
+  }
+
+  Widget _buildFloatingActionButton() {
+    return FloatingActionButton(
         onPressed: () {
           // Guard against calling JS before the page is fully loaded.
           if (!_isPageFinished) {
@@ -94,17 +140,7 @@ Page resource error:
         },
         tooltip: 'Send Message to JS',
         child: const Icon(Icons.send),
-      ),
-      body: Stack(
-        children: [
-          WebViewWidget(controller: _controller),
-          if (_loadingPercentage < 100)
-            LinearProgressIndicator(
-              value: _loadingPercentage / 100.0,
-            ),
-        ],
-      ),
-    );
+      );
   }
 
   void _handleJavaScriptMessage(String jsonString) async {
@@ -128,6 +164,12 @@ Page resource error:
         return; // Cannot send error response as id is missing
       }
 
+      // --- Permissions Check ---
+      if (!_allowedPermissions.contains(method)) {
+        debugPrint('Permission denied for method: $method in Mini App: ${widget.manifest.name}');
+        await _sendErrorResponse(id, 403, 'Permission denied for method: $method');
+        return;
+      }
       debugPrint('Received method: $method with id: $id');
 
       switch (method) {

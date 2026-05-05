@@ -1,18 +1,18 @@
-# React Starter Mini App
+# Vue Starter Mini App
 
-This is a starter template for building Mini Apps using React on the Super App platform.
+This is a starter template for building Mini Apps using Vue.js on the Super App platform.
 
 ## Available Scripts
 
 In the project directory, you can run:
 
-### `npm start`
+### `npm run serve`
 
-Runs the app in development mode. Open your Super App and launch this Mini App (via remote URL pointing to `http://localhost:3000`) to test.
+Runs the app in development mode. Open your Super App and launch this Mini App (via remote URL pointing to `http://localhost:8080`) to test.
 
 ### `npm run build`
 
-Builds the app for production to the `build` folder. This optimized build is ready to be packaged into a `.zip` file and uploaded to the Super App backend for dynamic loading.
+Builds the app for production to the `dist` folder. This optimized build is ready to be packaged into a `.zip` file and uploaded to the Super App backend for dynamic loading.
 
 ### `super-app-cli serve`
 
@@ -38,7 +38,7 @@ Remember to declare all required permissions in your `public/manifest.json` file
 
 ```json
 {
-  "name": "My React Mini App",
+  "name": "My Vue Mini App",
   "version": "1.0.0",
   "permissions": [
     "user.getUserInfo",

@@ -74,7 +74,7 @@ program
 program
   .command('create <appName>')
   .description('Create a new Mini App from a template')
-  .option('-t, --template <templateName>', 'Specify a template (e.g., react-starter)', 'react-starter')
+  .option('-t, --template <templateName>', 'Specify a template (e.g., react-starter, vue-starter)', 'react-starter')
   .action(async (appName, options) => {
     const templatePath = path.join(__dirname, '..', 'templates', options.template);
     const appPath = path.join(process.cwd(), appName);
